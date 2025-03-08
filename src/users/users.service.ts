@@ -62,17 +62,17 @@ export class UsersService {
   async getUserProfile(
     userId: string,
   ): Promise<Omit<UserDocument, 'password' | 'roles'> & { roles: string[] }> {
-    try{
-    const userid = new Types.ObjectId(userId);
-    const populatedUser = await this.getUserLoginData(userid);
-    if (!populatedUser) {
+    try {
+      const userid = new Types.ObjectId(userId);
+      const populatedUser = await this.getUserLoginData(userid);
+      if (!populatedUser) {
+        throw new NotFoundException('User not found');
+      }
+
+      return populatedUser;
+    } catch (error) {
       throw new NotFoundException('User not found');
     }
-
-    return populatedUser;
-  }catch(error){
-     throw new NotFoundException('User not found');
-  }
   }
 
   async getUserLoginData(

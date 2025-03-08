@@ -16,7 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Request } from 'express';
 
-@Controller('users')
+@Controller('auth')
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
@@ -37,8 +37,8 @@ export class UsersController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: RequestWithUser) {
-    try{
-    return this.userService.getUserProfile(req.user.userId);
+    try {
+      return this.userService.getUserProfile(req.user.userId);
     } catch (error) {
       throw error;
     }

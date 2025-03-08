@@ -32,7 +32,12 @@ export class User {
   })
   roles: Role[];
 
-  @Prop({ type: String, enum: StatusEnum, required: true, default: StatusEnum.ACTIVE })
+  @Prop({
+    type: String,
+    enum: StatusEnum,
+    required: true,
+    default: StatusEnum.ACTIVE,
+  })
   status: StatusEnum;
 
   @Prop({ type: String })
@@ -51,7 +56,6 @@ UserSchema.pre('save', async function (next) {
   }
   next();
 });
-
 
 UserSchema.set('toJSON', {
   transform: (doc, ret) => {

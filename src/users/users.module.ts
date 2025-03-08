@@ -7,6 +7,7 @@ import { Role, RoleSchema } from './entities/role.entity';
 import { JwtAuthService } from './jwt.service';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -14,9 +15,14 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
       { name: User.name, schema: UserSchema },
       { name: Role.name, schema: RoleSchema },
     ]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '7d' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION_TIME'),
+        },
+      }),
     }),
   ],
   controllers: [UsersController],
