@@ -15,6 +15,7 @@ import { Role, RoleDocument } from './entities/role.entity';
 import { LoginTypeEnum, RoleEnum } from 'src/common/enum/role.enum';
 import { RegisterGuestDto } from './dto/register-guest.dto';
 import { RegisterFbDto } from './dto/register-fb.dto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UsersService {
@@ -170,6 +171,7 @@ export class UsersService {
       const userRole = await this.getRoleForNewUser();
       user = new this.userModel({
         provider: LoginTypeEnum.GUEST,
+        providerId: uuidv4(),
         roles: [userRole._id],
         device: deviceId ? { deviceId } : undefined,
       });
