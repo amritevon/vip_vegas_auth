@@ -103,12 +103,16 @@ export class UsersService {
   async login(
     userData: LoginDto,
   ): Promise<{ user: UserDocument; token: string }> {
-    const { email, password } = userData;
-    const user = await this.userModel.findOne({ email }).select('+password');
+    const { username, password } = userData;
+   const user = await this.userModel
+     .findOne({
+       $or: [{ username }, { email: username }],
+     })
+     .select('+password');
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+   if (!user) {
+     throw new BadRequestException('Invalid credentials');
+   }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
