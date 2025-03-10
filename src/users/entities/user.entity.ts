@@ -11,7 +11,7 @@ export type UserDocument = HydratedDocument<User>;
 @Schema({ timestamps: true })
 export class User {
   @Prop({ type: String, unique: true, sparse: true })
-  email: string;
+  email?: string;
 
   // @Prop({ unique: true, required: true })
   // username: string;
@@ -90,3 +90,13 @@ UserSchema.set('toJSON', {
     return ret;
   },
 });
+
+// UserSchema.pre('save', function (next) {
+//   if (this.email === null) {
+//     this.email = undefined;
+//   }
+//   if(this.providerId === null) {
+//     this.providerId = undefined;
+//   }
+//   next();
+// });

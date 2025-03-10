@@ -48,14 +48,23 @@ export class UsersService {
     });
     await user.save();
     const newUser = await this.getUserLoginData(user._id);
-    const token = await this.generateNewTokenForUser(user);
+    const token = await this.generateNewTokenForUser(
+      user._id,
+      user.email,
+      newUser.roles,
+    );
     return { user: newUser, token };
   }
 
-  private async generateNewTokenForUser(user: UserDocument) {
+  private async generateNewTokenForUser(
+    userId: Types.ObjectId,
+    email: string,
+    roles: string[],
+  ) {
     return await this.jwtAuthService.generateToken({
-      userId: user._id.toString(),
-      email: user.email,
+      userId: userId.toString(),
+      email,
+      roles,
     });
   }
 
@@ -88,7 +97,7 @@ export class UsersService {
   ): Promise<Omit<UserDocument, 'roles' | 'password'> & { roles: string[] }> {
     const populatedUser = await this.userModel
       .findById(userId)
-      .populate({ path: 'roles', model: Role.name, select: 'title' })
+      .populate({ path: 'roles', model: Role.name })
       .lean()
       .exec();
 
@@ -106,7 +115,10 @@ export class UsersService {
     userData: LoginDto,
   ): Promise<{ user: UserDocument; token: string }> {
     const { email, password } = userData;
-    const user = await this.userModel.findOne({ email }).select('+password');
+    const user = await this.userModel
+      .findOne({ email })
+      .select('+password')
+      .populate({ path: 'roles', model: Role.name });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -116,14 +128,19 @@ export class UsersService {
     if (!isMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }
-
-    const token = await this.generateNewTokenForUser(user);
+    const roleTitles: string[] = user.roles.map((role: any) => role.title);
+    const token = await this.generateNewTokenForUser(
+      user._id,
+      user.email,
+      roleTitles,
+    );
     return { user, token };
   }
 
   async handleFacebookAuth(fbData: RegisterFbDto): Promise<{
     user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
     token: string;
+    msg: string;
   }> {
     const { providerId, email, firstName, lastName, deviceId } = fbData;
     if (!providerId || !deviceId) {
@@ -134,7 +151,7 @@ export class UsersService {
     let user = await this.userModel.findOne({
       $or: [{ providerId: providerId }, { email }],
     });
-
+    let msg = 'User loggedin successfully ';
     if (!user) {
       const userRole = await this.getRoleForNewUser();
       user = new this.userModel({
@@ -147,26 +164,32 @@ export class UsersService {
         device: deviceId ? { deviceId } : undefined,
       });
       await user.save();
+      msg = 'User registered successfully ';
     }
 
-    const token = await this.generateNewTokenForUser(user);
     const newUser = await this.getUserLoginData(user._id);
-    return { user: newUser, token };
+    const token = await this.generateNewTokenForUser(
+      user._id,
+      user.email,
+      newUser.roles,
+    );
+    return { msg, user: newUser, token };
   }
 
   async handleGuestAuth(guestData: RegisterGuestDto): Promise<{
     user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
     token: string;
+    msg: string;
   }> {
     const { deviceId } = guestData;
     if (!deviceId) {
-      throw new BadRequestException('Device ID are required for Guest user');
+      throw new BadRequestException('Device ID is required for Guest user');
     }
     let user = await this.userModel.findOne({
-      deviceId,
+      'device.deviceId': deviceId,
       provider: LoginTypeEnum.GUEST,
     });
-
+    let msg = 'User loggedin successfully ';
     if (!user) {
       const userRole = await this.getRoleForNewUser();
       user = new this.userModel({
@@ -176,10 +199,15 @@ export class UsersService {
         device: deviceId ? { deviceId } : undefined,
       });
       await user.save();
+      msg = 'User registered successfully ';
     }
 
-    const token = await this.generateNewTokenForUser(user);
     const newUser = await this.getUserLoginData(user._id);
-    return { user: newUser, token };
+    const token = await this.generateNewTokenForUser(
+      user._id,
+      user.email,
+      newUser.roles,
+    );
+    return { msg, user: newUser, token };
   }
 }

@@ -48,8 +48,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     );
 
     response.status(status).json({
-      statusCode: status,
+      status: 'failed',
       message,
+      data: null,
+      statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
     });
