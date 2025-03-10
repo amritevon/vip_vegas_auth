@@ -27,12 +27,18 @@ export class UsersService {
     user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
     token: string;
   }> {
-    const { email } = userData;
-    const existingUser = await this.userModel.findOne({ email });
+   const { email, username } = userData;
+   const existingUser = await this.userModel.findOne({
+     $or: [{ email }, { username }],
+   });
 
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
-    }
+   if (existingUser) {
+     throw new BadRequestException(
+       existingUser.email === email
+         ? 'Email already exists'
+         : 'Username already exists',
+     );
+   }
     const userRole = await this.getRoleForNewUser();
     const user = new this.userModel({
       ...userData,
