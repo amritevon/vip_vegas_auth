@@ -6,20 +6,24 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Auth Error: No token provided'); // Log the error
+      console.error('Auth Error: No token provided');
       throw new UnauthorizedException('No token provided');
     }
 
@@ -27,10 +31,16 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const decoded = this.jwtService.verify(token);
-      request.user = decoded;
+      const user = await this.userModel.findById(decoded.userId);
+      if (!user) {
+        console.error('Auth Error: User not found in DB');
+        throw new UnauthorizedException('User not found');
+      }
+
+      request.user = user;
       return true;
     } catch (error) {
-      console.error('JWT Verification Failed:', error); // Log error
+      console.error('JWT Verification Failed:', error);
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

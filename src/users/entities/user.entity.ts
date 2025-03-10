@@ -3,22 +3,27 @@ import { HydratedDocument, Schema as MongooseSchema, Model } from 'mongoose';
 import { Role } from './role.entity';
 import * as bcrypt from 'bcryptjs';
 import { StatusEnum } from 'src/common/enum/status.enum';
+import { Device } from './device.entity';
+import { LoginTypeEnum } from 'src/common/enum/role.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ unique: true, required: true })
+  @Prop({ type: String, unique: true, sparse: true })
   email: string;
 
-  @Prop({ unique: true, required: true })
-  username: string;
+  // @Prop({ unique: true, required: true })
+  // username: string;
 
-  @Prop({ required: true })
+  @Prop() // optional as only fb or guest login, can be used by devs to login
   password: string;
 
-  @Prop({ required: true })
-  name: string;
+  @Prop({ type: String })
+  firstName: string;
+
+  @Prop({ type: String })
+  lastName: string;
 
   @Prop()
   token: number;
@@ -40,11 +45,33 @@ export class User {
   })
   status: StatusEnum;
 
-  @Prop({ type: String })
-  provider?: string;
+  @Prop({
+    type: String,
+    enum: LoginTypeEnum,
+    required: true,
+    default: LoginTypeEnum.GUEST,
+  })
+  provider: LoginTypeEnum;
 
-  @Prop({ type: String })
+  @Prop({ type: String, unique: true, sparse: true })
   providerId?: string;
+
+  @Prop({ type: Number, default: 0 })
+  maxTournamentParticipated: number;
+
+  @Prop({ type: Number, default: 0 })
+  highestTournamentEarnings: number;
+
+  @Prop({ type: Number, default: 0 })
+  bestTournamentRank: number;
+
+  @Prop({
+    type: Device,
+    required: function () {
+      return !!this.device;
+    },
+  })
+  device?: Device;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

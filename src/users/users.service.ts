@@ -2,7 +2,6 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
-  HttpException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -13,7 +12,9 @@ import { User, UserDocument } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { Role, RoleDocument } from './entities/role.entity';
-import { RoleEnum } from 'src/common/enum/role.enum';
+import { LoginTypeEnum, RoleEnum } from 'src/common/enum/role.enum';
+import { RegisterGuestDto } from './dto/register-guest.dto';
+import { RegisterFbDto } from './dto/register-fb.dto';
 
 @Injectable()
 export class UsersService {
@@ -27,18 +28,18 @@ export class UsersService {
     user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
     token: string;
   }> {
-   const { email, username } = userData;
-   const existingUser = await this.userModel.findOne({
-     $or: [{ email }, { username }],
-   });
+    const { email, username } = userData;
+    const existingUser = await this.userModel.findOne({
+      $or: [{ email }, { username }],
+    });
 
-   if (existingUser) {
-     throw new BadRequestException(
-       existingUser.email === email
-         ? 'Email already exists'
-         : 'Username already exists',
-     );
-   }
+    if (existingUser) {
+      throw new BadRequestException(
+        existingUser.email === email
+          ? 'Email already exists'
+          : 'Username already exists',
+      );
+    }
     const userRole = await this.getRoleForNewUser();
     const user = new this.userModel({
       ...userData,
@@ -103,16 +104,12 @@ export class UsersService {
   async login(
     userData: LoginDto,
   ): Promise<{ user: UserDocument; token: string }> {
-    const { username, password } = userData;
-   const user = await this.userModel
-     .findOne({
-       $or: [{ username }, { email: username }],
-     })
-     .select('+password');
+    const { email, password } = userData;
+    const user = await this.userModel.findOne({ email }).select('+password');
 
-   if (!user) {
-     throw new BadRequestException('Invalid credentials');
-   }
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -121,5 +118,66 @@ export class UsersService {
 
     const token = await this.generateNewTokenForUser(user);
     return { user, token };
+  }
+
+  async handleFacebookAuth(fbData: RegisterFbDto): Promise<{
+    user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
+    token: string;
+  }> {
+    const { providerId, email, firstName, lastName, deviceId } = fbData;
+    if (!providerId || !deviceId) {
+      throw new BadRequestException(
+        'Provider ID and Device ID are required for social login',
+      );
+    }
+    let user = await this.userModel.findOne({
+      $or: [{ providerId: providerId }, { email }],
+    });
+
+    if (!user) {
+      const userRole = await this.getRoleForNewUser();
+      user = new this.userModel({
+        email,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        provider: LoginTypeEnum.FACEBOOK,
+        providerId: providerId,
+        roles: [userRole._id],
+        device: deviceId ? { deviceId } : undefined,
+      });
+      await user.save();
+    }
+
+    const token = await this.generateNewTokenForUser(user);
+    const newUser = await this.getUserLoginData(user._id);
+    return { user: newUser, token };
+  }
+
+  async handleGuestAuth(guestData: RegisterGuestDto): Promise<{
+    user: Omit<UserDocument, 'roles' | 'password'> & { roles: string[] };
+    token: string;
+  }> {
+    const { deviceId } = guestData;
+    if (!deviceId) {
+      throw new BadRequestException('Device ID are required for Guest user');
+    }
+    let user = await this.userModel.findOne({
+      deviceId,
+      provider: LoginTypeEnum.GUEST,
+    });
+
+    if (!user) {
+      const userRole = await this.getRoleForNewUser();
+      user = new this.userModel({
+        provider: LoginTypeEnum.GUEST,
+        roles: [userRole._id],
+        device: deviceId ? { deviceId } : undefined,
+      });
+      await user.save();
+    }
+
+    const token = await this.generateNewTokenForUser(user);
+    const newUser = await this.getUserLoginData(user._id);
+    return { user: newUser, token };
   }
 }

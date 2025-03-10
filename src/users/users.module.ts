@@ -8,6 +8,7 @@ import { JwtAuthService } from './jwt.service';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { ConfigService } from '@nestjs/config';
+import { RolesSeederService } from 'src/common/seeders/role-seeder.service';
 
 @Module({
   imports: [
@@ -26,7 +27,9 @@ import { ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, JwtAuthService, JwtAuthGuard],
-  exports: [UsersService, JwtAuthService, MongooseModule, JwtAuthGuard],
+  providers: [UsersService, JwtAuthService, JwtAuthGuard, RolesSeederService],
+  exports: [JwtAuthService, JwtAuthGuard],
+
+  // exports: [UsersService, JwtAuthService, MongooseModule, JwtAuthGuard, RolesSeederService],
 })
 export class UsersModule {}
