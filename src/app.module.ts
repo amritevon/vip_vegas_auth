@@ -35,10 +35,4 @@ import * as Joi from 'joi';
   providers: [AppService, LogService],
   exports: [LogService],
 })
-export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthMiddleware)
-      .forRoutes({ path: 'protected', method: RequestMethod.ALL });
-  }
-}
+export class AppModule {}
